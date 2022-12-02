@@ -1,32 +1,44 @@
 def day02(inp, part2=False):
     lines = inp.strip().splitlines()
-    shape_scores = dict(zip('XYZ', [1, 2, 3]))
-    outcome_scores = dict(zip([-1, 0, 1], [0, 3, 6]))
+    shape_scores = dict(zip('ABC', [1, 2, 3]))
+    outcome_scores = dict(zip([-1, 0, 1], [0, 3, 6]))  # -1: we lost
+    beating_shapes = dict(zip('ABC', 'BCA'))  # A beaten by B etc.
+    losing_shapes = dict(zip('ABC', 'CAB'))  # A beats C etc.
+    translation = str.maketrans('XYZ', 'ABC')  # for part 1
 
     def outcome(theirs, ours):
-        if (theirs, ours) in [('A', 'X'), ('B', 'Y'), ('C', 'Z')]:
+        if theirs == ours:
             # draw
             return 0
-        if (theirs, ours) in [('A', 'Y'), ('B', 'Z'), ('C', 'X')]:
-            # we won
+        if ours == beating_shapes[theirs]:
+            # we win
             return 1
-        # we lost
+        # we lose
         return -1
 
     shape_score = 0
     outcome_score = 0
     for line in lines:
         theirs, ours = line.split()
-        if part2:
+        if not part2:
+            ours = ours.translate(translation)
+        else:
             # map to expected outcome
             if ours == 'X':
-                ours = dict(zip('ABC', 'ZXY'))[theirs]
+                # need to lose
+                ours = losing_shapes[theirs]
             elif ours == 'Y':
-                ours = dict(zip('ABC', 'XYZ'))[theirs]
+                # need to draw
+                ours = theirs
+            elif ours == 'Z':
+                # need to win
+                ours = beating_shapes[theirs]
             else:
-                ours = dict(zip('ABC', 'YZX'))[theirs]
+                raise ValueError(f'Unexpected letter {ours}.')
+
         outcome_score += outcome_scores[outcome(theirs, ours)]
         shape_score += shape_scores[ours]
+
     score = shape_score + outcome_score
 
     return score
