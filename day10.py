@@ -24,7 +24,7 @@ def day10(inp):
                 next_interesting = next(interesting_cycles, None)
         x += delta
     part1 = signal_strength
-    part2 = '\n'.join([''.join([c for c in row]) for row in screen])
+    part2 = '\n'.join([' '.join([c for c in row]) for row in screen])
 
     return part1, part2
 
