@@ -31,40 +31,50 @@ def day12(inp):
     end = tuple(np.ravel((board == ord('E') - ord('a')).nonzero()))
     board[end] = ord('z') - ord('a')
 
-    # walk the climb
-    shortests = {start: 0}  # position -> shortest path length
-    comefrom = {}  # position -> shortest-length predecessor position
-    target = end
-    edges = {start}  # candidates for next step
-    while edges:
-        # find "closest" edge
-        edge = min(edges, key=shortests.get)
-        steps_now = shortests[edge]
-        if edge == target:
-            part1 = steps_now
+    # handle part 2 too
+    true_start = start
+    overall_shortest_lengths = {}
 
-        # get all potential next fields
-        candidates = get_neighbs(edge, board)
+    for start in zip(*(board == 0).nonzero()):
+        # walk the climb
+        shortests = {start: 0}  # position -> shortest path length
+        comefrom = {}  # position -> shortest-length predecessor position
+        target = end
+        edges = {start}  # candidates for next step
+        while edges:
+            # find "closest" edge
+            edge = min(edges, key=shortests.get)
+            steps_now = shortests[edge]
+            if edge == target:
+                # we're done for this starting point
+                overall_shortest_lengths[start] = steps_now
+                break
 
-        # filter out already visited fields if shorter
-        candidates = [
-            candidate
-            for candidate in candidates
-            if shortests.get(candidate, np.inf) > steps_now + 1
-        ]
+            # get all potential next fields
+            candidates = get_neighbs(edge, board)
 
-        if not candidates:
-            # nowhere to go from here
-            edges.remove(edge)
-            continue
+            # filter out already visited fields if shorter
+            candidates = [
+                candidate
+                for candidate in candidates
+                if shortests.get(candidate, np.inf) > steps_now + 1
+            ]
 
-        # choose highest candidate
-        next_field = candidates[-1]
-        shortests[next_field] = steps_now + 1
-        comefrom[next_field] = edge
-        edges.add(next_field)
+            if not candidates:
+                # nowhere to go from here
+                edges.remove(edge)
+                continue
 
-    return part1#, part2
+            # choose highest candidate
+            next_field = candidates[-1]
+            shortests[next_field] = steps_now + 1
+            comefrom[next_field] = edge
+            edges.add(next_field)
+
+    part1 = overall_shortest_lengths[true_start]
+    part2 = min(overall_shortest_lengths.values())
+
+    return part1, part2
 
 
 if __name__ == "__main__":
