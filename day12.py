@@ -1,8 +1,10 @@
 import numpy as np
 
+def get_neighbs(edge, board, part2):
+    """Find neighbours of index `edge` in `board`.
 
-def get_neighbs(edge, board):
-    """Find neighbours of index `edge` in `board`."""
+    If `part2`, step at most one level down. Otherwise step at most one level up.
+    """
     neighbs = []
     for delta in np.array([[1, 0], [-1, 0], [0, 1], [0, -1]]):
         neighb = edge + delta
@@ -10,7 +12,10 @@ def get_neighbs(edge, board):
             # our of bounds index
             continue
         neighb = tuple(neighb)
-        if board[neighb] > board[edge] + 1:
+        if part2 and board[neighb] < board[edge] - 1:
+            # too low
+            continue
+        if not part2 and board[neighb] > board[edge] + 1:
             # too high
             continue
         neighbs.append(neighb)
@@ -19,9 +24,9 @@ def get_neighbs(edge, board):
     heights = board[tuple(np.array(neighbs).T)]
     inds = heights.argsort()
     return [neighbs[ind] for ind in inds]
-        
 
-def day12(inp):
+
+def day12(inp, part2=False):
     # turn map into 2d array of heights, 0 is lowest
     board = np.array([[ord(c) - ord('a') for c in line] for line in inp.splitlines()])
 
@@ -31,73 +36,49 @@ def day12(inp):
     end = tuple(np.ravel((board == ord('E') - ord('a')).nonzero()))
     board[end] = ord('z') - ord('a')
 
-    # handle part 2 too
-    true_start = start
-    overall_shortest_lengths = {}
+    # part2: start from end, walk until ground level hit
+    if part2:
+        start, end = end, start
 
-    starts = set(zip(*(board == 0).nonzero()))  # all lowest points
-    start = true_start
-    starts.remove(start)  # necessary because we could skip this later
-    while starts:
-        # walk the climb
-        shortests = {start: 0}  # position -> shortest path length
-        comefrom = {}  # position -> shortest-length predecessor position
-        target = end
-        edges = {start}  # candidates for next step
-        while edges:
-            # find "closest" edge
-            edge = min(edges, key=shortests.get)
-            steps_now = shortests[edge]
-            if edge == target:
-                # we're done for this starting point
-                overall_shortest_lengths[start] = steps_now
-                # if there are any lowest points along the shortest path:
-                # only keep last one
-                current = edge
-                lowests = []
-                while current != start:
-                    current = comefrom[current]
-                    if board[current] == 0:
-                        # we have a lowest point
-                        lowests.append(current)
-                # now we have a list of "lowests" in reverse order that excludes "start"
-                # no point in checking all but the first value later for part 2
-                # (and we know for sure part 1 is what we start with)
-                starts -= set(lowests[1:])
-                break
+    # walk the climb
+    shortests = {start: 0}  # position -> shortest path length
+    comefrom = {}  # position -> shortest-length predecessor position
+    target = end  # only used for part 1
+    edges = {start}  # candidates for next step
+    while edges:
+        # find "closest" edge
+        edge = min(edges, key=shortests.get)
+        steps_now = shortests[edge]
+        if (part2 and board[edge] == 0) or (not part2 and edge == target):
+            shortest = steps_now
+            break
 
-            # get all potential next fields
-            candidates = get_neighbs(edge, board)
+        # get all potential next fields
+        candidates = get_neighbs(edge, board, part2)
 
-            # filter out already visited fields if shorter
-            candidates = [
-                candidate
-                for candidate in candidates
-                if shortests.get(candidate, np.inf) > steps_now + 1
-            ]
+        # filter out already visited fields if shorter
+        candidates = [
+            candidate
+            for candidate in candidates
+            if shortests.get(candidate, np.inf) > steps_now + 1
+        ]
 
-            if not candidates:
-                # nowhere to go from here
-                edges.remove(edge)
-                continue
+        if not candidates:
+            # nowhere to go from here
+            edges.remove(edge)
+            continue
 
-            # choose highest candidate
-            next_field = candidates[-1]
-            shortests[next_field] = steps_now + 1
-            comefrom[next_field] = edge
-            edges.add(next_field)
+        # choose highest candidate
+        next_field = candidates[-1]
+        shortests[next_field] = steps_now + 1
+        comefrom[next_field] = edge
+        edges.add(next_field)
 
-        # prepare for next starting point
-        start = starts.pop()
-
-    part1 = overall_shortest_lengths[true_start]
-    part2 = min(overall_shortest_lengths.values())
-
-    return part1, part2
+    return shortest
 
 
 if __name__ == "__main__":
     testinp = open('day12.testinp').read()
-    print(day12(testinp))
+    print(day12(testinp), day12(testinp, part2=True))
     inp = open('day12.inp').read()
-    print(day12(inp))
+    print(day12(inp), day12(inp, part2=True))
