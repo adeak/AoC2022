@@ -35,7 +35,10 @@ def day12(inp):
     true_start = start
     overall_shortest_lengths = {}
 
-    for start in zip(*(board == 0).nonzero()):
+    starts = set(zip(*(board == 0).nonzero()))  # all lowest points
+    start = true_start
+    starts.remove(start)  # necessary because we could skip this later
+    while starts:
         # walk the climb
         shortests = {start: 0}  # position -> shortest path length
         comefrom = {}  # position -> shortest-length predecessor position
@@ -48,6 +51,19 @@ def day12(inp):
             if edge == target:
                 # we're done for this starting point
                 overall_shortest_lengths[start] = steps_now
+                # if there are any lowest points along the shortest path:
+                # only keep last one
+                current = edge
+                lowests = []
+                while current != start:
+                    current = comefrom[current]
+                    if board[current] == 0:
+                        # we have a lowest point
+                        lowests.append(current)
+                # now we have a list of "lowests" in reverse order that excludes "start"
+                # no point in checking all but the first value later for part 2
+                # (and we know for sure part 1 is what we start with)
+                starts -= set(lowests[1:])
                 break
 
             # get all potential next fields
@@ -70,6 +86,9 @@ def day12(inp):
             shortests[next_field] = steps_now + 1
             comefrom[next_field] = edge
             edges.add(next_field)
+
+        # prepare for next starting point
+        start = starts.pop()
 
     part1 = overall_shortest_lengths[true_start]
     part2 = min(overall_shortest_lengths.values())
