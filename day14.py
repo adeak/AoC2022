@@ -25,14 +25,19 @@ def day14(inp):
     bottom = max(key[1] for key in cave)
 
     # start simulation
-    part1 = None
+    resting_count = None
     for sands in count(0):
         pos = (500, 0)
+        if pos in cave:
+            # part 2 over
+            final_resting_count = sands
+            break
         while True:
+            # step sand grain
             for delta in 0, -1, 1:
                 # check below, left below, right below in this order
                 next_pos = pos[0] + delta, pos[1] + 1
-                if next_pos not in cave:
+                if next_pos not in cave and next_pos[1] < bottom + 2:
                     # fall down
                     break
             else:
@@ -42,15 +47,11 @@ def day14(inp):
             # we could move
             pos = next_pos
 
-            if pos[1] == bottom:
-                # we've reached the bottom
-                part1 = sands
-                break
-            
-        if part1 is not None:
-            break
+            if pos[1] == bottom and resting_count is None:
+                # we've reached the part1 bottom
+                resting_count = sands
 
-    return part1#, part2
+    return resting_count, final_resting_count
 
 
 if __name__ == "__main__":
