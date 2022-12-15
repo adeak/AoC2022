@@ -25,27 +25,26 @@ def compute_ranges(distances, y0):
         covered_ranges.add(range(xmin, xmax + 1))
 
     # pre-process ranges: merge overlaps
-    while True:
-        # keep comparing all pairs as long as we find any overlaps
-        for first, second in combinations(covered_ranges, 2):
-            # check if first and second overlap
-            # or just touch!
-            overlap = first.start in second or second.start in first
-            touching = first.start == second.stop or second.start == first.stop
-            if overlap or touching:
-                # merge these
-                start = min(first.start, second.start)
-                stop = max(first.stop, second.stop)
-                merged_range = range(start, stop)
-                covered_ranges = (covered_ranges - {first, second}) | {merged_range}
-                break
-        else:
-            # there were no overlaps among any pairs
-            break
-
-    # now we have non-overlapping ranges, sort them by start point
     covered_ranges = sorted(covered_ranges, key=attrgetter('start'))
-    return covered_ranges
+    merged_ranges = []
+    current_range = covered_ranges[0]
+    for next_range in covered_ranges[1:]:
+        # check if current and next overlap
+        # or just touch!
+        overlap = current_range.start in next_range or next_range.start in current_range
+        touching = current_range.start == next_range.stop or next_range.start == current_range.stop
+        if overlap or touching:
+            # merge these
+            stop = max(current_range.stop, next_range.stop)
+            current_range = range(current_range.start, stop)
+        else:
+            # no overlap
+            merged_ranges.append(current_range)
+            current_range = next_range
+    # handle last merged range
+    merged_ranges.append(current_range)
+
+    return merged_ranges
 
 
 def day15(inp, testing=False):
