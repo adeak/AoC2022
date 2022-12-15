@@ -8,7 +8,7 @@ def manhattan(pos0, pos1):
     return abs(xb - xs) + abs(yb - ys)
 
 
-def compute_ranges(sensor_beacons, distances, y0):
+def compute_ranges(distances, y0):
     """Compute a set of merged ranges covered by any sensor in a given row at y.
 
     Returns a list of ranges (these might still contain beacons).
@@ -52,11 +52,11 @@ def day15(inp, testing=False):
     lines = inp.rstrip().splitlines()
     pattern = re.compile(r'Sensor at x=([-\d]+), y=([-\d]+): closest beacon is at x=([-\d]+), y=([-\d]+)')
 
-    sensor_beacons = {}  # sensor pos -> closest beacon pos mapping
+    beacons = set()  # beacon positions
     distances = {}  # sensor pos -> closest beacon distance mapping
     for line in lines:
         xs, ys, xb, yb = map(int, pattern.match(line).groups())
-        sensor_beacons[xs, ys] = xb, yb
+        beacons.add((xb, yb))
         distances[xs, ys] = manhattan((xs, ys), (xb, yb))
 
     if testing:
@@ -68,14 +68,14 @@ def day15(inp, testing=False):
 
     for y0 in y0s:
         # compute merged ranges from each beacon
-        covered_ranges = compute_ranges(sensor_beacons, distances, y0)
+        covered_ranges = compute_ranges(distances, y0)
         if y0 == special_y:
             # part 1: find length of merged ranges sans beacons
             #         (and hope that part 2's answer comes later)
             covereds = sum(len(rng) for rng in covered_ranges)
             beaconeds = sum(
                 1
-                for beacon in set(sensor_beacons.values())
+                for beacon in beacons
                 if beacon[1] == y0 and any(beacon[0] in rng for rng in covered_ranges)
             )
             excludeds = covereds - beaconeds
