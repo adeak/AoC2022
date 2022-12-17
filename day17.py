@@ -1,4 +1,4 @@
-from itertools import cycle
+from itertools import count, cycle
 
 
 def tuple_add(first, second):
@@ -29,7 +29,11 @@ def day17(inp):
 
     height = 0
     landscape = set()  # set of sedimented rock positions
-    for it in range(2022):
+    last_complete_row = None  # last height where there was a full row
+    complete_row_deltas = {}  # complete row distance -> rock count when achieved
+    heights = []  # history of heights
+    period = None  # to be determined empirically
+    for it in count():
         rock = next(rocks)
         pos = (2, height + 3)  # position of rock origin (bottom left corner)
         for dx in dxs:
@@ -53,13 +57,61 @@ def day17(inp):
                 break
             # the way is free below
             pos = next_pos
-    part1 = height
+        heights.append(height)
 
-    return part1
+        # for part 2: there has to be periodicity
+        #             so let's compute the period from how often the distance between
+        #             two consecutive filled rows repeats
+        for y in range(0 if last_complete_row is None else last_complete_row + 1, height):
+            if all((x, y) in landscape for x in range(7)):
+                # we have a new complete row
+                if last_complete_row is not None:
+                    # we have a delta
+                    delta = y - last_complete_row
+                    last_complete_row = y
+                else:
+                    last_complete_row = y
+                    continue
+
+                # check if there's repetition
+                if delta in complete_row_deltas:
+                    # we have the period
+                    prev_it = complete_row_deltas[delta]
+                    period = it - prev_it
+                    # keep heights only within a period
+                    heights_in_period = heights[prev_it:]
+                    deltas_in_period = [h2 - h1 for h1, h2 in zip(heights_in_period, heights_in_period[1:])]
+                    break
+                else:
+                    # have to keep looking for period
+                    complete_row_deltas[delta] = it
+        if period is not None:
+            # we're also done for part 2
+            break
+
+    # now we have a period of at worst `period` ranging from prev_it to it
+    # extrapolate from repeating height differences
+    parts = []
+    for rock_count in 2022, 1_000_000_000_000:
+        target_it = rock_count - 1
+        target_mod, target_rem = divmod(target_it, period)
+
+        ref_height = heights_in_period[0]  # height at rock index `prev_it`
+        ref_mod, ref_rem = divmod(prev_it, period)
+
+        # assume target_rem > ref_rem for now...
+        remainder_offset = heights_in_period[target_rem - ref_rem] - ref_height
+
+        period_offset = (target_mod - ref_mod) * sum(deltas_in_period)
+        #remainder_offset = sum(deltas_in_period[:target_rem])
+        parts.append(ref_height + period_offset + remainder_offset)
+
+
+    return tuple(parts)
 
 
 if __name__ == "__main__":
     testinp = open('day17.testinp').read()
     inp = open('day17.inp').read()
-    print(day17(testinp))
+    #print(day17(testinp))  # doesn't work due to assumptions (no full rows in test); infinite loop
     print(day17(inp))
