@@ -99,11 +99,13 @@ def day17(inp):
         ref_height = heights_in_period[0]  # height at rock index `prev_it`
         ref_mod, ref_rem = divmod(prev_it, period)
 
-        # assume target_rem > ref_rem for now...
-        remainder_offset = heights_in_period[target_rem - ref_rem] - ref_height
+        period_delta = sum(deltas_in_period)
+        if target_rem >= ref_rem:
+            remainder_offset = heights_in_period[target_rem - ref_rem] - ref_height
+        else:
+            remainder_offset = ref_height - period_delta + heights_in_period[target_rem - ref_rem] 
 
-        period_offset = (target_mod - ref_mod) * sum(deltas_in_period)
-        #remainder_offset = sum(deltas_in_period[:target_rem])
+        period_offset = (target_mod - ref_mod) * period_delta
         parts.append(ref_height + period_offset + remainder_offset)
 
 
