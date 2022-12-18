@@ -1,16 +1,28 @@
+from collections import deque
+from operator import itemgetter
+
+
+def tuple_add_at(inp, index, val):
+    """Add `val` to `inp` tuple item `index`."""
+    if val == 0:
+        return inp
+    out = list(inp)
+    out[index] += val
+    return tuple(out)
+
+
 def day18(inp):
     lines = inp.rstrip().splitlines()
-    coordses = [tuple(map(int, line.split(','))) for line in lines]
+    coordses = set(tuple(map(int, line.split(','))) for line in lines)
 
+    # build set of open faces
     lava_faces = set()  # set of open faces, where a face is a (reference_point, normal_axis) tuple
     for coords in coordses:
         # generate 6 possible faces
         for dim in range(3):
             for delta in -1, 1:
                 if delta == 1:
-                    ref_point = list(coords)
-                    ref_point[dim] += 1
-                    ref_point = tuple(ref_point)
+                    ref_point = tuple_add_at(coords, dim, delta)
                 else:
                     ref_point = coords
                 face = (ref_point, dim)
@@ -22,7 +34,42 @@ def day18(inp):
                     lava_faces.add(face)
     part1 = len(lava_faces)
 
-    return part1#, part2
+    # part 2: pretend to be the steam and do BFS
+    start_face = min(lava_faces, key=itemgetter(0))  # lowest face has to be a surface one
+    start = tuple_add_at(start_face[0], 0, -1)  # initial coordinates of steam
+    assert start not in coordses  # check we're outside
+    edge = {start}
+    seen = set()
+    surface_counts = deque([0], maxlen=3)
+    while True:
+        # check each edge cube
+        # collect new edge front
+        # if we were to cross a face: add face to surface faces
+        # if we didn't cross any faces: we've processed the entire surface
+        next_edge = set()
+        seen |= edge
+        new_surface_count = 0
+        for current in edge:
+            # consider 6 neighbour cubes
+            for dim in range(3):
+                for delta in -1, 1:
+                    neighb = tuple_add_at(current, dim, delta)
+                    if neighb in seen:
+                        continue
+                    if neighb in coordses:
+                        # we would've gone through a surface face
+                        new_surface_count += 1
+                        continue
+                    # otherwise continue BFS
+                    next_edge.add(neighb)
+        surface_counts.append(surface_counts[-1] + new_surface_count)
+        if len(set(surface_counts)) == 1:
+            # we're done
+            break
+        edge = next_edge
+    part2 = surface_counts[-1]
+
+    return part1, part2
 
 
 if __name__ == "__main__":
