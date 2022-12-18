@@ -79,8 +79,8 @@ def day17(inp):
                     prev_it = complete_row_deltas[delta]
                     period = it - prev_it
                     # keep heights only within a period
+                    # (this will contain period + 1 items: first and last value correspond)
                     heights_in_period = heights[prev_it:]
-                    deltas_in_period = [h2 - h1 for h1, h2 in zip(heights_in_period, heights_in_period[1:])]
                     break
                 else:
                     # have to keep looking for period
@@ -91,23 +91,28 @@ def day17(inp):
 
     # now we have a period of at worst `period` ranging from prev_it to it
     # extrapolate from repeating height differences
+    # (find the iteration corresponding to indices in heights_in_period that
+    # has the same remainder (mod period) as the target, then add the appropriate
+    # number of full period height offsets)
     parts = []
     for rock_count in 2022, 1_000_000_000_000:
         target_it = rock_count - 1
         target_mod, target_rem = divmod(target_it, period)
-
-        ref_height = heights_in_period[0]  # height at rock index `prev_it`
         ref_mod, ref_rem = divmod(prev_it, period)
 
-        period_delta = sum(deltas_in_period)
-        if target_rem >= ref_rem:
-            remainder_offset = heights_in_period[target_rem - ref_rem] - ref_height
-        else:
-            remainder_offset = ref_height - period_delta + heights_in_period[target_rem - ref_rem] 
+        period_delta = heights_in_period[-1] - heights_in_period[0]  # offset after 1 period
+        ref_height = heights_in_period[:-1][(target_rem - ref_rem) % period]
+        period_diff = target_mod - ref_mod
+        if target_rem < ref_rem:
+            # one period difference is already accounted for in ref_height
+            # (because ref_rem for heights_in_period[0] is larger than
+            # target_rem, there's a jump in remainder from period - 1 to 0
+            # in heights_in_period[:] before reaching the iteration corresponding
+            # to target rem)
+            period_diff -= 1
 
-        period_offset = (target_mod - ref_mod) * period_delta
-        parts.append(ref_height + period_offset + remainder_offset)
-
+        period_offset = period_diff * period_delta  # accounting for complete period jumps
+        parts.append(ref_height + period_offset)
 
     return tuple(parts)
 
