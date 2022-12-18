@@ -2,19 +2,25 @@ def day18(inp):
     lines = inp.rstrip().splitlines()
     coordses = [tuple(map(int, line.split(','))) for line in lines]
 
-    lava_faces = {}  # coordinates -> free faces mapping
+    lava_faces = set()  # set of open faces, where a face is a (reference_point, normal_axis) tuple
     for coords in coordses:
-        lava_faces[coords] = 6  # start from 6
-        # check each neighbour and remove free face count
+        # generate 6 possible faces
         for dim in range(3):
             for delta in -1, 1:
-                other_coords = list(coords)
-                other_coords[dim] += delta
-                other_coords = tuple(other_coords)
-                if other_coords in lava_faces:
-                    lava_faces[coords] -= 1
-                    lava_faces[other_coords] -= 1
-    part1 = sum(lava_faces.values())
+                if delta == 1:
+                    ref_point = list(coords)
+                    ref_point[dim] += 1
+                    ref_point = tuple(ref_point)
+                else:
+                    ref_point = coords
+                face = (ref_point, dim)
+                if face in lava_faces:
+                    # we have overlap, this is not an open face
+                    lava_faces.remove(face)
+                else:
+                    # this might be a new open face
+                    lava_faces.add(face)
+    part1 = len(lava_faces)
 
     return part1#, part2
 
