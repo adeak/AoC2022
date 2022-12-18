@@ -1,5 +1,4 @@
 from collections import deque
-from operator import itemgetter
 
 
 def tuple_add_at(inp, index, val):
@@ -15,28 +14,24 @@ def day18(inp):
     lines = inp.rstrip().splitlines()
     coordses = set(tuple(map(int, line.split(','))) for line in lines)
 
-    # build set of open faces
-    lava_faces = set()  # set of open faces, where a face is a (reference_point, normal_axis) tuple
+    # part 1: add or remove open face count as we add cubes
+    lava_faces = {}  # coordinates -> free faces mapping
     for coords in coordses:
-        # generate 6 possible faces
+        lava_faces[coords] = 6  # start from 6
+        # check each neighbour and remove free face count
         for dim in range(3):
             for delta in -1, 1:
-                if delta == 1:
-                    ref_point = tuple_add_at(coords, dim, delta)
-                else:
-                    ref_point = coords
-                face = (ref_point, dim)
-                if face in lava_faces:
-                    # we have overlap, this is not an open face
-                    lava_faces.remove(face)
-                else:
-                    # this might be a new open face
-                    lava_faces.add(face)
-    part1 = len(lava_faces)
+                other_coords = list(coords)
+                other_coords[dim] += delta
+                other_coords = tuple(other_coords)
+                if other_coords in lava_faces:
+                    lava_faces[coords] -= 1
+                    lava_faces[other_coords] -= 1
+    part1 = sum(lava_faces.values())
 
     # part 2: pretend to be the steam and do BFS
-    start_face = min(lava_faces, key=itemgetter(0))  # lowest face has to be a surface one
-    start = tuple_add_at(start_face[0], 0, -1)  # initial coordinates of steam
+    start_face = min(lava_faces)  # lowest face has to be a surface one
+    start = tuple_add_at(start_face, 0, -1)  # initial coordinates of steam
     assert start not in coordses  # check we're outside
     edge = {start}
     seen = set()
