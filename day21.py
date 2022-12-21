@@ -1,13 +1,11 @@
 import graphlib
-from itertools import count
-import operator as op
+import sympy as sym
 
 
-def do_work(lines, part2=False, initial_human=None):
-    """Topologically sort monkeys, find root value.
+def day21(inp):
+    lines = inp.rstrip().splitlines()
 
-    For part2, initial_human value can be passed to overwrite humn value.
-    """
+    # parse inputs into a toposorter graph
     toposorter = graphlib.TopologicalSorter()
     nums = {}  # monkey -> number or monkey -> (callable, name, other_name) mapping
     for line in lines:
@@ -15,42 +13,56 @@ def do_work(lines, part2=False, initial_human=None):
         words = args.split()
         if len(words) == 1:
             # number monkey
-            if part2 and name == 'humn' and initial_human:
-                nums[name] = initial_human
+            if name == 'humn':
+                # prepare for part 2
+                HUMN_VALUE = words[0]
+                nums[name] = 'x'
             else:
                 nums[name] = int(words[0])
             toposorter.add(name)
         else:
             # math monkey
             arg1, opchar, arg2 = words
-            opfun = dict(zip('+-*/', [op.add, op.sub, op.mul, op.floordiv]))[opchar]
-            if part2 and name == 'root':
-                opfun = op.eq
-            nums[name] = (opfun, arg1, arg2)
+            if name == 'root':
+                root_op = opchar
+                opchar = 'ROOT_OP'
+            nums[name] = (opchar, arg1, arg2)
             toposorter.add(name, arg1, arg2)  # depend on both arguments
 
-    # walk the graph
+    # walk the graph, build expression string, replace humn with variable
     for name in toposorter.static_order():
-        if isinstance(nums[name], int):
-            # nothing to do
+        if name == 'humn':
+            nums[name] = 'x'
             continue
-        opfun, arg1, arg2 = nums[name]
-        nums[name] = opfun(nums[arg1], nums[arg2])
+        if isinstance(nums[name], int):
+            continue
+        opchar, argname1, argname2 = nums[name]
+        arg1, arg2 = nums[argname1], nums[argname2]
+        if isinstance(arg1, int) and isinstance(arg2, int):
+            # make work a bit easier by folding constants
+            nums[name] = eval(f'{arg1} {opchar.replace("/", "//")} {arg2}')
+        else:
+            nums[name] = f'({arg1} {opchar} {arg2})'
         if name == 'root':
-            return nums[name]
+            # we're done building an evaluable expression
+            expr = nums[name]
+            # part 1:
+            #    substitute x for original human value
+            #    restore root operator
+            #    replace truediv with floordiv
+            #    evaluate
+            part1 = eval(
+                expr.replace('x', HUMN_VALUE).replace('ROOT_OP', root_op).replace('/', '//'),
+                globals()
+            )
+            # part 2:
+            #    replace '==' with '-' to turn 'f(x) == c' into 'f(x) - c' (== 0) for sympy
+            root_expr = expr.replace('ROOT_OP', '-')  # part 2 (reduce equation to 0!)
+            break
 
-
-def day21(inp):
-    lines = inp.rstrip().splitlines()
-
-    part1 = do_work(lines)
-    for it in count():
-        #for initial_human in -it, it:
-        for initial_human in it,:
-            this_is_it = do_work(lines, part2=True, initial_human=initial_human)
-            if this_is_it:
-                part2 = initial_human
-                return part1, part2
+    # part 2: cheat
+    part2 = sym.solve(root_expr, 'x')[0]
+    return part1, part2
 
 
 if __name__ == "__main__":
