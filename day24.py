@@ -1,5 +1,6 @@
 from collections import defaultdict
 
+
 class Blizzard:
     deltas = {
         '^': (-1, 0),
@@ -52,49 +53,64 @@ def day24(inp):
             blizzards_by_row[i].add(blizzard)
             blizzards_by_col[j].add(blizzard)
 
-    # BFS, hoping that most paths will run into blizzards and die
-    paths = [(start,)]
-    seens = defaultdict(set)  # times at which a position was already visited
-    seens[start].add(1)
-    while True:
-        next_paths = []
-        for path in paths:
-            time = len(path) - 1
-            pos = path[-1]
-            # end condition
-            if pos == (end[0] - 1, end[1]):
-                # we'll be there in the next step
-                part1 = time + 1
-                return part1
+    # part 2 shenanigans
+    true_start = start
+    true_end = end
 
-            next_time = time + 1
-            # get valid neighbour tiles
-            neighbs = get_neighbs(pos, width, height)
-            # ignore neighbour tiles if we were already there
-            neighbs = {
-                neighb
-                for neighb in neighbs
-                if next_time not in seens[neighb]
-            }
-            # add "this" tile (waiting)
-            neighbs.add(pos)
-            # keep tiles that won't coincide with blizzards
-            neighbs = {
-                neighb
-                for neighb in neighbs
-                if all(
-                    blizzard.predict(next_time) != neighb
-                    for blizzard in blizzards_by_row[neighb[0]]
-                ) and all(
-                    blizzard.predict(next_time) != neighb
-                    for blizzard in blizzards_by_col[neighb[1]]
-                )
-            }
-            # for any valid neighbs we can keep going
-            for neighb in neighbs:
-                next_paths.append(path + (neighb,))
-                seens[neighb].add(next_time)
-        paths = next_paths
+    # BFS, hoping that most paths will run into blizzards and die
+    min_times = []
+    for start, end in (true_start, true_end), (true_end, true_start), (true_start, true_end):
+        paths = [(start,)]
+        seens = defaultdict(set)  # times at which a position was already visited
+        seens[start].add(0)
+        while True:
+            next_paths = []
+            for path in paths:
+                time = len(path) - 1
+                pos = path[-1]
+                # end condition
+                if abs(pos[0] - end[0]) + abs(pos[1] - end[1]) == 1:
+                    # we'll be there in the next step; done for this trip
+                    min_times.append(time + 1)
+                    break
+
+                next_time = time + 1
+                # get valid neighbour tiles
+                neighbs = get_neighbs(pos, width, height)
+                # ignore neighbour tiles if we were already there
+                # (turns out to be super important for pruning the state space)
+                neighbs = {
+                    neighb
+                    for neighb in neighbs
+                    if next_time not in seens[neighb]
+                }
+                # add "this" tile (waiting)
+                neighbs.add(pos)
+                # keep tiles that won't coincide with blizzards
+                trip_offset = sum(min_times)  # delay from any earlier trips (part 2)
+                neighbs = {
+                    neighb
+                    for neighb in neighbs
+                    if all(
+                        blizzard.predict(next_time + trip_offset) != neighb
+                        for blizzard in blizzards_by_row[neighb[0]]
+                    ) and all(
+                        blizzard.predict(next_time + trip_offset) != neighb
+                        for blizzard in blizzards_by_col[neighb[1]]
+                    )
+                }
+                # for any valid neighbs we can keep going that way
+                for neighb in neighbs:
+                    next_paths.append(path + (neighb,))
+                    seens[neighb].add(next_time)
+            else:
+                # we have to keep going
+                paths = next_paths
+                continue
+            # we've found a shortest path
+            break
+
+    return min_times[0], sum(min_times)
 
 
 if __name__ == "__main__":
