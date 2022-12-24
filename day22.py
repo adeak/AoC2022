@@ -1,9 +1,19 @@
-def day22(inp):
-    boardspec, pathspec = inp.rstrip().split('\n\n')
+def parse_board(boardspec, part2=False):
+    """Parse the board input.
 
-    # parse path
-    pathspec = pathspec.replace('R', ' R ').replace('L', ' L ').split()
-    # parse board
+    Returns
+    -------
+    walls : set
+        Coordinates where there are walls.
+
+    correspondence : dict
+        Dict defining where states teleport when walking off the edge.
+        Keys are (position, orientation), values are the teleported
+        (position, orientation). For part 1 the orientation never changes.
+
+    initial_pos : tuple
+        Starting position.
+    """
     row_extents = {}  # row index -> [min, max] col indices, inclusive
     col_extents = {}  # col index -> [min, max] row indices, inclusive
     walls = set()  # set of wall positions
@@ -34,7 +44,35 @@ def day22(inp):
         y for y in range(row_extents[1][0], row_extents[1][1] + 1)
         if (x0, y) not in walls
     )
-    pos = x0, y0
+    initial_pos = x0, y0
+
+    # prepare for part 2: define correspondence from each edge coordinate
+    correspondence = {}
+    if part2:
+        pass
+    else:
+        # go 1 beyond row/col extents and jump to the other extent
+        for i, minmax in row_extents.items():
+            first, last = minmax
+            # we only have right (0) and left (2) along rows
+            correspondence[((i, last + 1), 0)] = (i, first), 0
+            correspondence[((i, first - 1), 2)] = (i, last), 2
+        for j, minmax in col_extents.items():
+            first, last = minmax
+            # we only have down (1) and up (3) along columns
+            correspondence[((last + 1, j), 1)] = (first, j), 1
+            correspondence[((first - 1, j), 3)] = (last, j), 3
+
+    return walls, correspondence, initial_pos
+
+
+def day22(inp):
+    boardspec, pathspec = inp.rstrip().split('\n\n')
+
+    # parse path
+    pathspec = pathspec.replace('R', ' R ').replace('L', ' L ').split()
+    # parse board
+    walls, correspondence, pos = parse_board(boardspec)
 
     deltas = {
         0: (0, 1),
@@ -58,28 +96,18 @@ def day22(inp):
         num_steps = int(path_item)
         delta = deltas[orientation]
         for _ in range(num_steps):
-            next_pos = [pos[0] + delta[0], pos[1] + delta[1]]
-            if delta[0] == 0:
-                # walk along row
-                if next_pos[1] > row_extents[pos[0]][1]:
-                    # wrap to left
-                    next_pos[1] = row_extents[pos[0]][0]
-                elif next_pos[1] < row_extents[pos[0]][0]:
-                    # wrap to right
-                    next_pos[1] = row_extents[pos[0]][1]
+            next_pos = pos[0] + delta[0], pos[1] + delta[1]
+            # teleport if necessary
+            if (next_pos, orientation) in correspondence:
+                next_pos, next_orientation = correspondence[next_pos, orientation]
             else:
-                # walk along column
-                if next_pos[0] > col_extents[pos[1]][1]:
-                    # wrap to top
-                    next_pos[0] = col_extents[pos[1]][0]
-                elif next_pos[0] < col_extents[pos[1]][0]:
-                    # wrap to bottom
-                    next_pos[0] = col_extents[pos[1]][1]
-            next_pos = tuple(next_pos)
+                next_orientation = orientation
 
+            # check if step is valid
             if next_pos in walls:
                 break
             pos = next_pos
+            orientation = next_orientation
 
     password = 1000 * pos[0] + 4 * pos[1] + orientation
     return password
