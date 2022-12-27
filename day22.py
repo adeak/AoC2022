@@ -1,5 +1,14 @@
 from itertools import repeat
 
+RIGHT, DOWN, LEFT, UP = range(4)
+deltas = {
+    RIGHT: (0, 1),
+    DOWN: (1, 0),
+    LEFT: (0, -1),
+    UP: (-1, 0),
+}
+
+
 def parse_board(boardspec, part2=False):
     """Parse the board input.
 
@@ -52,130 +61,64 @@ def parse_board(boardspec, part2=False):
 
     # prepare for part 2: define correspondence from each edge coordinate
     correspondence = {}
-    RIGHT, DOWN, LEFT, UP = range(4)
     if part2:
         # hard-coded cube folding for now... doesn't work for test input
         # pair 7 pairs of edges in production output
-        n = int((num_fields // 6)**0.5)  # linear size of the cube
+        # pairs are defined by (edge1, edge2, reverse) triples
+        # where each edge is a (*face_pos, side) tuple
+        # where face_pos is the index of the given face (in a 4x3 grid)
+        # and side is UP/DOWN/LEFT/RIGHT
+        # and reverse is a bool whether the two edges are oppositely
+        # oriented (the default is top to bottom and left to right)
 
-        # pair 1
-        i1 = repeat(3*n + 1, n)
-        j1 = range(1*n + 1, 1*n + 1 + n)
-        i2 = range(3*n + 1, 3*n + 1 + n)
-        j2 = repeat(1*n, n)
-        from_orientation, to_orientation = DOWN, LEFT
-        for i1now, j1now, i2now, j2now in zip(i1, j1, i2, j2):
-            correspondence[(i1now, j1now), from_orientation] = (i2now, j2now), to_orientation
+        pairs = [
+            ((2, 1, DOWN), (3, 0, RIGHT), False),
+            ((1, 1, LEFT), (2, 0, UP), False),
+            ((0, 2, DOWN), (1, 1, RIGHT), False),
+            ((0, 2, RIGHT), (2, 1, RIGHT), True),
+            ((0, 2, UP), (3, 0, DOWN), False),
+            ((0, 1, UP), (3, 0, LEFT), False),
+            ((0, 1, LEFT), (2, 0, LEFT), True),
+        ]
 
-        i1 = range(3*n + 1, 3*n + 1 + n)
-        j1 = repeat(1*n + 1, n)
-        i2 = repeat(3*n, n)
-        j2 = range(1*n + 1, 1*n + 1 + n)
-        from_orientation, to_orientation = RIGHT, UP
-        for i1now, j1now, i2now, j2now in zip(i1, j1, i2, j2):
-            correspondence[(i1now, j1now), from_orientation] = (i2now, j2now), to_orientation
+        # generate correspondence to teleport with for each edge pair, both ways
+        n_cube = int((num_fields // 6)**0.5)  # linear size of the cube
+        for first, second, reverse in pairs:
+            # get the indices of the edges that are part of the board
+            row_inds = []
+            col_inds = []
+            for (n, m, edge) in first, second:
+                if edge == LEFT:
+                    row_inds.append(range(n*n_cube + 1, n*n_cube + 1 + n_cube))
+                    col_inds.append(list(repeat(m*n_cube + 1, n_cube)))
+                elif edge == RIGHT:
+                    row_inds.append(range(n*n_cube + 1, n*n_cube + 1 + n_cube))
+                    col_inds.append(list(repeat(m*n_cube + n_cube, n_cube)))
+                elif edge == DOWN:
+                    row_inds.append(list(repeat(n*n_cube + n_cube, n_cube)))
+                    col_inds.append(range(m*n_cube + 1, m*n_cube + 1 + n_cube))
+                else:
+                    row_inds.append(list(repeat(n*n_cube + 1, n_cube)))
+                    col_inds.append(range(m*n_cube + 1, m*n_cube + 1 + n_cube))
 
-        # pair 2
-        i1 = repeat(2*n, n)
-        j1 = range(0*n + 1, 0*n + 1 + n)
-        i2 = range(1*n + 1, 1*n + 1 + n)
-        j2 = repeat(1*n + 1, n)
-        from_orientation, to_orientation = UP, RIGHT
-        for i1now, j1now, i2now, j2now in zip(i1, j1, i2, j2):
-            correspondence[(i1now, j1now), from_orientation] = (i2now, j2now), to_orientation
+            # reverse one edge if necessary
+            if reverse:
+                row_inds[0] = row_inds[0][::-1]
+                col_inds[0] = col_inds[0][::-1]
 
-        i1 = range(1*n + 1, 1*n + 1 + n)
-        j1 = repeat(1*n, n)
-        i2 = repeat(2*n + 1, n)
-        j2 = range(0*n + 1, 0*n + 1 + n)
-        from_orientation, to_orientation = LEFT, DOWN
-        for i1now, j1now, i2now, j2now in zip(i1, j1, i2, j2):
-            correspondence[(i1now, j1now), from_orientation] = (i2now, j2now), to_orientation
+            # generate step from first to second
+            from_orientation = first[-1]
+            to_orientation = (second[-1] + 2) % 4  # up <-> down, left <-> right
+            di, dj = deltas[from_orientation]
+            for i1, j1, i2, j2 in zip(row_inds[0], col_inds[0], row_inds[1], col_inds[1]):
+                correspondence[(i1 + di, j1 + dj), from_orientation] = (i2, j2), to_orientation
 
-        # pair 3
-        i1 = repeat(1*n + 1, n)
-        j1 = range(2*n + 1, 2*n + 1 + n)
-        i2 = range(1*n + 1, 1*n + 1 + n)
-        j2 = repeat(2*n, n)
-        from_orientation, to_orientation = DOWN, LEFT
-        for i1now, j1now, i2now, j2now in zip(i1, j1, i2, j2):
-            correspondence[(i1now, j1now), from_orientation] = (i2now, j2now), to_orientation
-
-        i1 = range(1*n + 1, 1*n + 1 + n)
-        j1 = repeat(2*n + 1, n)
-        i2 = repeat(1*n, n)
-        j2 = range(2*n + 1, 2*n + 1 + n)
-        from_orientation, to_orientation = RIGHT, UP
-        for i1now, j1now, i2now, j2now in zip(i1, j1, i2, j2):
-            correspondence[(i1now, j1now), from_orientation] = (i2now, j2now), to_orientation
-
-        # pair 4
-        i1 = range(2*n + 1, 2*n + 1 + n)
-        j1 = repeat(2*n + 1, n)
-        i2 = range(0*n + 1, 0*n + 1 + n)[::-1]
-        j2 = repeat(3*n, n)
-        from_orientation, to_orientation = RIGHT, LEFT
-        for i1now, j1now, i2now, j2now in zip(i1, j1, i2, j2):
-            correspondence[(i1now, j1now), from_orientation] = (i2now, j2now), to_orientation
-
-        i1 = range(0*n + 1, 0*n + 1 + n)[::-1]
-        j1 = repeat(3*n + 1, n)
-        i2 = range(2*n + 1, 2*n + 1 + n)
-        j2 = repeat(2*n, n)
-        from_orientation, to_orientation = RIGHT, LEFT
-        for i1now, j1now, i2now, j2now in zip(i1, j1, i2, j2):
-            correspondence[(i1now, j1now), from_orientation] = (i2now, j2now), to_orientation
-
-        # pair 5
-        i1 = repeat(0*n, n)
-        j1 = range(2*n + 1, 2*n + 1 + n)
-        i2 = repeat(4*n, n)
-        j2 = range(0*n + 1, 0*n + 1 + n)
-        from_orientation, to_orientation = UP, UP
-        for i1now, j1now, i2now, j2now in zip(i1, j1, i2, j2):
-            correspondence[(i1now, j1now), from_orientation] = (i2now, j2now), to_orientation
-
-        i1 = repeat(4*n + 1, n)
-        j1 = range(0*n + 1, 0*n + 1 + n)
-        i2 = repeat(0*n + 1, n)
-        j2 = range(2*n + 1, 2*n + 1 + n)
-        from_orientation, to_orientation = DOWN, DOWN
-        for i1now, j1now, i2now, j2now in zip(i1, j1, i2, j2):
-            correspondence[(i1now, j1now), from_orientation] = (i2now, j2now), to_orientation
-
-        # pair 6
-        i1 = repeat(0*n, n)
-        j1 = range(1*n + 1, 1*n + 1 + n)
-        i2 = range(3*n + 1, 3*n + 1 + n)
-        j2 = repeat(0*n + 1, n)
-        from_orientation, to_orientation = UP, RIGHT
-        for i1now, j1now, i2now, j2now in zip(i1, j1, i2, j2):
-            correspondence[(i1now, j1now), from_orientation] = (i2now, j2now), to_orientation
-
-        i1 = range(3*n + 1, 3*n + 1 + n)
-        j1 = repeat(0*n, n)
-        i2 = repeat(0*n + 1, n)
-        j2 = range(1*n + 1, 1*n + 1 + n)
-        from_orientation, to_orientation = LEFT, DOWN
-        for i1now, j1now, i2now, j2now in zip(i1, j1, i2, j2):
-            correspondence[(i1now, j1now), from_orientation] = (i2now, j2now), to_orientation
-
-        # pair 7
-        i1 = range(0*n + 1, 0*n + 1 + n)
-        j1 = repeat(1*n, n)
-        i2 = range(2*n + 1, 2*n + 1 + n)[::-1]
-        j2 = repeat(0*n + 1, n)
-        from_orientation, to_orientation = LEFT, RIGHT
-        for i1now, j1now, i2now, j2now in zip(i1, j1, i2, j2):
-            correspondence[(i1now, j1now), from_orientation] = (i2now, j2now), to_orientation
-
-        i1 = range(2*n + 1, 2*n + 1 + n)[::-1]
-        j1 = repeat(0*n, n)
-        i2 = range(0*n + 1, 0*n + 1 + n)
-        j2 = repeat(1*n + 1, n)
-        from_orientation, to_orientation = LEFT, RIGHT
-        for i1now, j1now, i2now, j2now in zip(i1, j1, i2, j2):
-            correspondence[(i1now, j1now), from_orientation] = (i2now, j2now), to_orientation
+            # generate step from second to first
+            from_orientation = second[-1]
+            to_orientation = (first[-1] + 2) % 4  # up <-> down, left <-> right
+            di, dj = deltas[from_orientation]
+            for i1, j1, i2, j2 in zip(row_inds[1], col_inds[1], row_inds[0], col_inds[0]):
+                correspondence[(i1 + di, j1 + dj), from_orientation] = (i2, j2), to_orientation
 
     else:
         # go 1 beyond row/col extents and jump to the other extent
@@ -200,13 +143,6 @@ def day22(inp, part2=False):
     pathspec = pathspec.replace('R', ' R ').replace('L', ' L ').split()
     # parse board
     walls, correspondence, pos = parse_board(boardspec, part2=part2)
-
-    deltas = {
-        0: (0, 1),
-        1: (1, 0),
-        2: (0, -1),
-        3: (-1, 0),
-    }
 
     orientation = 0
     for path_item in pathspec:
